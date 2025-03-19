@@ -9,4 +9,4 @@ class Engine:
         self.__engine.kill()
     """Run"""
     def run(self):
-        self.__engine.run()
+        return self.__engine.run()

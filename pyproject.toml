@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "isobiscuit-engine"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["trollmii <trollmii@outlook.de>"]
 readme = "README.md"
