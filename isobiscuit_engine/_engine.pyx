@@ -215,7 +215,7 @@ cdef class Engine:
             arg1 = self.register[0x30]
             self.fs_read_file(arg1)
         elif call == 0x08:
-            cdef Engine engine = Engine(data_sector={}, code_sector={}, memory_sector={}, zip=self.zip, debug=self.debug)
+            engine = Engine(data_sector={}, code_sector={}, memory_sector={}, zip=self.zip, debug=self.debug)
             engine.pc = self.pc
             engine.flags['ZF'] = 1
             engine.ret_pcs = self.ret_pcs
@@ -225,8 +225,8 @@ cdef class Engine:
             self.flags['ZF'] = 0
             
         elif call == 0x09: # Get char from string (ecx) by index (ebx)
-            cdef int arg1 = self.register[0x30] # Index
-            cdef str arg2 = self.register[0x31] # String
+            arg1 = self.register[0x30] # Index
+            arg2 = self.register[0x31] # String
              
             self.register[0x2f] = arg2[arg1]
             
@@ -463,14 +463,14 @@ cdef class Hardware:
         if action == None:
             return
         else:
-            cdef int port = int(self.hardware_memory[0xFFFF_0104])
+            port = int(self.hardware_memory[0xFFFF_0104])
             if action == 0x00: # Listen
                 fam  = self.hardware_memory[0xFFFF_0101]
                 kind = self.hardware_memory[0xFFFF_0102]
-                cdef str host = self.hardware_memory[0xFFFF_0103]
+                host = self.hardware_memory[0xFFFF_0103]
                 if host == None:return
                 if fam == 0x00: # Inet:
-                    cdef int fam = socket.AF_INET
+                    fam = socket.AF_INET
                 else:
                     if self.debug:
                         print(f"Invalid family of socket: {fam}")
@@ -489,7 +489,7 @@ cdef class Hardware:
             elif action == 0x01: # Connect
                 fam  = self.hardware_memory[0xFFFF_0101]
                 kind = self.hardware_memory[0xFFFF_0102]
-                cdef str host = self.hardware_memory[0xFFFF_0103]
+                host = self.hardware_memory[0xFFFF_0103]
                 if host == None:return
                 if fam == 0x00: # Inet:
                     fam = socket.AF_INET
@@ -518,7 +518,7 @@ cdef class Hardware:
                 else:
                     sock.send(bytes(message, encoding="utf8"))
             elif action == 0x03: # recv
-                cdef int bufsize = self.hardware_memory[0xFFFF_0106]
+                bufsize = self.hardware_memory[0xFFFF_0106]
                 sock = self.inet_connection[port]
                 msg = sock.recv(bufsize)
                 self.hardware_memory[0xFFFF_0107] = msg
