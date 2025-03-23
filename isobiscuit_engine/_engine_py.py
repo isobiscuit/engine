@@ -24,16 +24,8 @@ hardware_memory_addresses = [
 
 
 engine_lock_fs = threading.Lock()
-"""Engine class"""
-cdef class Engine:
-    cdef str mode
-    cdef list stack
-    cdef list code_addresses
-    cdef int code_len
-    cdef list ret_pcs
-    cdef Hardware hardware
-    cdef int pc
-    """initializer"""
+
+class Engine:
     def __init__(self, data_sector, code_sector, mem_sector, zip: io.BytesIO, debug=False, ):
         self.mode = "biscuit"
         self.zip: io.BytesIO = zip
@@ -62,10 +54,8 @@ cdef class Engine:
         self.stop_event = threading.Event()
         for i in hardware_memory_addresses:
             self.memory[i] = None
-    """Kill engine"""
     def kill(self):
         self.stop_event.set()
-    """Run"""
     def run(self):
         try:
             while self.pc < self.code_len and not self.stop_event.is_set():
@@ -90,68 +80,68 @@ cdef class Engine:
         else:
             raise ValueError(f"Unknown opcode: {opcode}")
 
-    cdef void add(self, tuple op): self.register[op[1]] += self.register[op[2]]
-    cdef void sub(self, tuple op): self.register[op[1]] -= self.register[op[2]]
-    cdef void mul(self, tuple op): self.register[op[1]] *= self.register[op[2]]
-    cdef void div(self, tuple op): self.register[op[1]] //= self.register[op[2]]
-    cdef void mod(self, tuple op): self.register[op[1]] %= self.register[op[2]]
-    cdef void pow(self, tuple op): self.register[op[1]] **= self.register[op[2]]
+    def add(self, op): self.register[op[1]] += self.register[op[2]]
+    def sub(self, op): self.register[op[1]] -= self.register[op[2]]
+    def mul(self, op): self.register[op[1]] *= self.register[op[2]]
+    def div(self, op): self.register[op[1]] //= self.register[op[2]]
+    def mod(self, op): self.register[op[1]] %= self.register[op[2]]
+    def pow(self, op): self.register[op[1]] **= self.register[op[2]]
 
-    cdef void and_op(self, tuple op): self.register[op[1]] &= self.register[op[2]]
-    cdef void or_op(self, tuple op): self.register[op[1]] |= self.register[op[2]]
-    cdef void xor(self, tuple op): self.register[op[1]] ^= self.register[op[2]]
-    cdef void not_op(self, tuple op): self.register[op[1]] = ~self.register[op[1]]
-    cdef void shl(self, tuple op): self.register[op[1]] <<= op[2]
-    cdef void shr(self, tuple op): self.register[op[1]] >>= op[2]
+    def and_op(self, op): self.register[op[1]] &= self.register[op[2]]
+    def or_op(self, op): self.register[op[1]] |= self.register[op[2]]
+    def xor(self, op): self.register[op[1]] ^= self.register[op[2]]
+    def not_op(self, op): self.register[op[1]] = ~self.register[op[1]]
+    def shl(self, op): self.register[op[1]] <<= op[2]
+    def shr(self, op): self.register[op[1]] >>= op[2]
 
-    cdef void load(self, tuple op): self.register[op[1]] = self.memory[op[2]]
-    cdef void store(self, tuple op): self.memory[op[2]] = self.register[op[1]]
+    def load(self, op): self.register[op[1]] = self.memory[op[2]]
+    def store(self, op): self.memory[op[2]] = self.register[op[1]]
 
-    cdef void jmp(self, tuple op): self.jump(op[1])
-    cdef void je(self, tuple op):  # Jump if equal
+    def jmp(self, op): self.jump(op[1])
+    def je(self, op):  # Jump if equal
         if self.flags['ZF']: self.jump(op[1])
-    cdef void jne(self, tuple op):  # Jump if not equal
+    def jne(self, op):  # Jump if not equal
         if not self.flags['ZF']: self.jump(op[1])
-    cdef void jg(self, tuple op):  # Jump if greater
+    def jg(self, op):  # Jump if greater
         if not self.flags['ZF'] and self.flags['SF'] == self.flags['OF']: self.jump(op[1])
-    cdef void jl(self, tuple op):  # Jump if less
+    def jl(self, op):  # Jump if less
         if self.flags['SF'] != self.flags['OF']: self.jump(op[1])
 
-    cdef void mov(self, tuple op): self.register[op[1]] = self.register[op[2]]
+    def mov(self, op): self.register[op[1]] = self.register[op[2]]
 
 
-    cdef void swap(self, tuple op):
+    def swap(self, op):
         r1 = self.register[op[1]]
         r2 = self.register[op[2]]
         self.register[op[2]] = r1
         self.register[op[1]] = r2
-    cdef void dup(self, tuple op):
+    def dup(self, op):
         s = self.stack[-1]
         self.stack.append(s)
-    cdef void drop(self, tuple op):
+    def drop(self, op):
         self.stack.pop()
-    cdef void halt(self, tuple op):
+    def halt(self, op):
         self.kill()
-    cdef void rand(self, tuple op):
+    def rand(self, op):
         num = random.randint(0, op[2])
         self.register[op[1]] = num
-    cdef void inc(self, tuple op):
+    def inc(self, op):
         self.register[op[1]]+=1
-    cdef void dec(self, tuple op):
+    def dec(self, op):
         self.register[op[1]]-=1
-    cdef void abs(self, tuple op):
+    def abs(self, op):
         self.register[op[1]] = abs(self.register[op[2]])
-    cdef void neg(self, tuple op):
+    def neg(self, op):
         self.register[op[1]] = -self.register[op[1]]
     
-    cdef void change_mode(self, tuple op):
+    def change_mode(self, op):
         mode = op[1]
         print("[INFO] mode changing is in developing")
         self.mode = mode
 
 
 
-    cdef void interrupt(self, tuple op):
+    def interrupt(self, op):
         interrupt = op[1]
         if interrupt == 0x45:
             self.biscuit_call()
@@ -163,7 +153,7 @@ cdef class Engine:
 
 
 
-    cdef void biscuit_call(self):
+    def biscuit_call(self):
         call = self.register[0x2f]
         if call == 0x00:
             arg1 = self.register[0x30]
@@ -346,23 +336,23 @@ cdef class Engine:
 
 
 
-    cdef void call(self, tuple op):
+    def call(self, op):
         self.ret_pcs.append(self.pc)
         self.jump(op[1])
-    cdef void ret(self, tuple op):
+    def ret(self, op):
         pc = self.ret_pcs.pop()
         self.pc = pc
 
-    cdef void push(self, tuple op):
+    def push(self, op):
         r = self.register[op[1]]
         self.stack.append(r)
-    cdef void pop(self, tuple op):
+    def pop(self, op):
         s = self.stack.pop()
         self.register[op[1]] = s
 
 
 
-    cdef void cmp(self, tuple op):
+    def cmp(self, op):
         r1 = op[1]
         r2 = op[2]
         val1 = self.register[r1]
@@ -401,15 +391,25 @@ cdef class Engine:
                 print(e)
 
 
-    cdef void jump(self, int address):
+    def update_register(self, register: int, value):
+        if register > 0xf and register < 0x2a:
+            self.register[register] = bool(value)
+        else:
+            self.register[register] = value
+    def jump(self, address):
         self.pc = self.code_addresses.index(address)-1
 
 
+    def _update_1bit_register(self, register: int, value: bool):
+        register[register] = value
+    
+    def _update_register(self, register: int, value):
+        register[register] = value
+
 
     
 
-cdef class Hardware:
-    
+class Hardware:
     def __init__(self, debug):
         self.hardware_memory = {}
         self.debug = debug
