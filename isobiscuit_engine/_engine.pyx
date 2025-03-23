@@ -70,10 +70,12 @@ cdef class Engine:
         for i in hardware_memory_addresses:
             self.memory[i] = None
     """Kill engine"""
-    def kill(self):
+    cpdef kill(self):
         self.stop_event.set()
     """Run"""
-    def run(self):
+    cpdef run(self):
+        self.run()
+    cdef _run(self):
         try:
             while self.pc < self.code_len and not self.stop_event.is_set():
                 address = self.code_addresses[self.pc]
