@@ -1,0 +1,17 @@
+name: Commit Messages
+on: [pull_request_target]
+
+jobs:
+  label:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
+            issue-message: 'Commit Messages'
+            pr-message: 'Commit Messages'
