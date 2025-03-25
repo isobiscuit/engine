@@ -70,10 +70,10 @@ cdef class Engine:
         for i in hardware_memory_addresses:
             self.memory[i] = None
     """Kill engine"""
-    cpdef kill(self):
+    def kill(self):
         self.stop_event.set()
     """Run"""
-    cpdef run(self):
+    def run(self):
         self.run()
     cdef _run(self):
         try:
