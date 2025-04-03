@@ -3,7 +3,7 @@ name = "isobiscuit-engine"
 dynamic = ["requires-python", "version", "description", "scripts", "readme", "authors"]
 [tool.poetry]
 name = "isobiscuit-engine"
-version = "0.1.16"
+version = "0.1.17"
 description = ""
 authors = ["trollmii <trollmii@outlook.de>"]
 readme = "README.md"
@@ -20,6 +20,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.9"
 cython = "^3.0.12"
+colorama = "^0.4.6"
 [tool.poetry.build]
 script = "build.py"
 generate-setup-file = true
