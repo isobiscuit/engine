@@ -4,7 +4,37 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-sdist:
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Build package
+        run: poetry build -f sdist
+
+      - name: Upload built package
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-package-sdist-latest-py${{ matrix.python-version }}
+          path: dist/
+      
+    
+  build-wheel:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -28,10 +58,10 @@ jobs:
         run: poetry install --no-root
 
       - name: Build package
-        run: poetry build
+        run: poetry build -f wheel
 
       - name: Upload built package
         uses: actions/upload-artifact@v4
         with:
-          name: poetry-package-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: engine-package-wheel-${{ matrix.os }}-py${{ matrix.python-version }}
           path: dist/
