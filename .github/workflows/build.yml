@@ -91,8 +91,8 @@ jobs:
           git add -A
       - name: Commit and Push Changes
         run: |
-          git commit -m "Build isobiscuit-engine ${{ matrix.os }} py${{ matrix.python-version }} (${{ github.workflow_sha }})"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
+          
+          git diff --quiet || (git commit -m "Build isobiscuit-engine ${{ matrix.os }} py${{ matrix.python-version }} (${{ github.workflow_sha }})" && git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }})
 
       - name: Upload built wheel package
         uses: actions/upload-artifact@v4
