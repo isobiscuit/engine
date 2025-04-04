@@ -7,7 +7,7 @@ jobs:
   build-sdist:
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -26,11 +26,13 @@ jobs:
 
       - name: Build package
         run: poetry build -f sdist
-
+      - name: Get Git commit hash
+        id: git_hash
+        run: echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"
       - name: Upload built package
         uses: actions/upload-artifact@v4
         with:
-          name: engine-package-sdist-latest-py${{ matrix.python-version }}
+          name: engine-package-sdist-latest-py${{ matrix.python-version }}-${{ steps.git_hash.outputs.commit_hash }}
           path: dist/
       
     
@@ -38,7 +40,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
 
@@ -59,9 +61,11 @@ jobs:
 
       - name: Build package
         run: poetry build -f wheel
-
+      - name: Get Git commit hash
+        id: git_hash
+        run: echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"
       - name: Upload built package
         uses: actions/upload-artifact@v4
         with:
-          name: engine-package-wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: engine-package-wheel-${{ matrix.os }}-py${{ matrix.python-version }}-${{ steps.git_hash.outputs.commit_hash }}
           path: dist/
