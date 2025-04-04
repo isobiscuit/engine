@@ -44,7 +44,7 @@ jobs:
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git add .
           git commit -m "Add artefacts for commit ${{ github.workflow_sha }}"
-          git push origin HEAD:main
+          git push origin HEAD:master
       
 
       - name: Upload built sdist package
