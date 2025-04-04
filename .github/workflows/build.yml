@@ -38,14 +38,6 @@ jobs:
         run: mv dist/*.tar.gz artefacts/build/${{ github.workflow_sha }}/
 
       - uses: actions/checkout@v1
-      - name: Commit report
-        run: |
-              git config --global user.name 'actions[bot]'
-              git config --global user.email 'actions[bot]@users.noreply.github.com'
-              git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/isobiscuit/engine
-              git checkout "${GITHUB_REF:11}"
-              git commit -am "Build isobiscuit engine ${{ github.workflow_sha }}"
-              git push
       
 
       - name: Upload built sdist package
@@ -89,14 +81,6 @@ jobs:
         run: mv dist/*.whl artefacts/build/${{ github.workflow_sha }}/
 
       - uses: actions/checkout@v1
-      - name: Commit report
-        run: |
-            git config --global user.name 'actions[bot]'
-            git config --global user.email 'actions[bot]@users.noreply.github.com'
-            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/isobiscuit/engine
-            git checkout "${GITHUB_REF:11}"
-            git commit -am "Build isobiscuit engine ${{ github.workflow_sha }}"
-            git push
       
 
       - name: Upload built wheel package
