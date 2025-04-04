@@ -37,14 +37,15 @@ jobs:
       - name: Move built sdist package to artefacts directory
         run: mv dist/*.tar.gz artefacts/build/${{ github.workflow_sha }}/
 
-      - name: Push changes
+      - uses: actions/checkout@v1
+      - name: Commit report
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git add .
-          git commit -m "Add artefacts for commit ${{ github.workflow_sha }}"
-          git push origin HEAD:master
+              git config --global user.name 'actions[bot]'
+              git config --global user.email 'actions[bot]@users.noreply.github.com'
+              git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/isobiscuit/engine
+              git checkout "${GITHUB_REF:11}"
+              git commit -am "Build isobiscuit engine ${{ github.workflow_sha }}"
+              git push
       
 
       - name: Upload built sdist package
@@ -87,14 +88,15 @@ jobs:
       - name: Move built wheel package to artefacts directory
         run: mv dist/*.whl artefacts/build/${{ github.workflow_sha }}/
 
-      - name: Push build
+      - uses: actions/checkout@v1
+      - name: Commit report
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git add .
-          git commit -m "Add artefacts for commit ${{ github.workflow_sha }}"
-          git push origin HEAD:master
+            git config --global user.name 'actions[bot]'
+            git config --global user.email 'actions[bot]@users.noreply.github.com'
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/isobiscuit/engine
+            git checkout "${GITHUB_REF:11}"
+            git commit -am "Build isobiscuit engine ${{ github.workflow_sha }}"
+            git push
       
 
       - name: Upload built wheel package
