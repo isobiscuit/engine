@@ -16,7 +16,7 @@ include = [
 ]
 [tool.poetry.dependencies]
 python = "^3.9"
-cython = "^3.0.12"
+cython = "^0.29.24"
 colorama = "^0.4.6"
 [tool.poetry.build]
 script = "build.py"
