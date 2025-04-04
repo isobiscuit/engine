@@ -28,7 +28,7 @@ engine_lock_fs = threading.Lock()
 cdef class Engine:
     cdef int mode
     cdef list stack
-    cdef list code_addresses
+    cdef dict code_addresses
     cdef int code_len
     cdef list ret_pcs
     cdef Hardware hardware
@@ -40,6 +40,7 @@ cdef class Engine:
     cdef dict flags
     cdef dict OPCODES
     cdef object stop_event
+    cdef tuple code_memory
     """initializer"""
     def __init__(self, dict data_sector, dict code_sector, dict mem_sector, zip: BytesIO, debug:bool=False, ):
         self.mode = 0x12
@@ -49,10 +50,16 @@ cdef class Engine:
         self.debug = debug
         self.register = {i: 0 for i in range(0x10, 0x3C)}
         self.memory = {**mem_sector,**data_sector, **code_sector}
+
+
+        sorted_items = sorted(code_sector.items())
+        self.code_memory = tuple(value for key, value in sorted_items)
+        self.code_addresses = {key: index for index, (key, value) in enumerate(sorted_items)}
+        self.code_len = len(sorted_items)
+
+
         self.flags = {'ZF': 0, 'CF': 0, 'SF': 0, 'OF': 0}
         self.pc = 0
-        self.code_addresses = list(code_sector.keys())
-        self.code_len = len(self.code_addresses)
         self.ret_pcs = []
         self.OPCODES = {
             '1b': self.add, '1c': self.sub, '1d': self.mul, '1e': self.div,
@@ -74,14 +81,11 @@ cdef class Engine:
         self.stop_event.set()
     """Run"""
     cpdef run(self):
-        self.run()
-    cdef _run(self):
         try:
             while self.pc < self.code_len and not self.stop_event.is_set():
-                address = self.code_addresses[self.pc]
-                op = self.memory[address]
+                op = self.code_memory[self.pc]
                 if self.debug:
-                    print(f"[Execute] [Address:{hex(address)}] {op}")
+                    print(f"[Execute] [Address:{hex(self.pc)}] {op}")
                 self.execute(op)
                 self.pc += 1
         except KeyError as e:
@@ -411,7 +415,7 @@ cdef class Engine:
 
 
     cdef void jump(self, int address):
-        self.pc = self.code_addresses.index(address)-1
+        self.pc = self.code_addresses[address]-1
 
 
 
