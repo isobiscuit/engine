@@ -14,7 +14,7 @@ def build(setup_kwargs):
             name="isobiscuit_engine.engine",
             sources=["isobiscuit_engine/_engine.pyx"],
             extra_compile_args=["-O3"],
-            libraries=["m"]
+            libraries=[]
         )
     ]
     
