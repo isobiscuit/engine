@@ -29,13 +29,30 @@ jobs:
 
       - name: Get Git commit hash
         id: git_hash
-        run: echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Create directory for artefacts
+        run: mkdir -p artefacts/build/${{ github.sha }}
+
+      - name: Move built sdist package to artefacts directory
+        run: mv dist/*.tar.gz artefacts/build/${{ github.sha }}/
+
+      - name: Commit changes (if any)
+        run: |
+          git config --global user.email "your-email@example.com"
+          git config --global user.name "Your Name"
+          git add artefacts/
+          git diff --cached --quiet || git commit -m "Add artefacts for commit ${{ github.sha }}"
       
+      - name: Push changes
+        run: |
+          git push origin HEAD:main  # Hier den Branch anpassen, falls nötig.
+
       - name: Upload built sdist package
         uses: actions/upload-artifact@v4
         with:
-          name: engine-package-sdist-latest-py${{ matrix.python-version }}-${{ steps.git_hash.outputs.commit_hash }}
-          path: dist/
+          name: engine-package-sdist-py${{ matrix.python-version }}-${{ github.sha }}
+          path: artefacts/build/${{ github.sha }}/
 
   build-wheel:
     strategy:
@@ -63,47 +80,27 @@ jobs:
 
       - name: Get Git commit hash
         id: git_hash
-        run: echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Create directory for artefacts
+        run: mkdir -p artefacts/build/${{ github.sha }}
+
+      - name: Move built wheel package to artefacts directory
+        run: mv dist/*.whl artefacts/build/${{ github.sha }}/
+
+      - name: Commit changes (if any)
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "Github Actions"
+          git add artefacts/
+          git diff --cached --quiet || git commit -m "Add artefacts for commit ${{ github.sha }}"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main  # Hier den Branch anpassen, falls nötig.
 
       - name: Upload built wheel package
         uses: actions/upload-artifact@v4
         with:
-          name: engine-package-wheel-${{ matrix.os }}-py${{ matrix.python-version }}-${{ steps.git_hash.outputs.commit_hash }}
-          path: dist/
-
-  create-release:
-    needs: [build-sdist, build-wheel]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: build by ${{github.actor}}:v${{ github.sha }}
-          release_name: Release ${{ github.sha }}
-          body: |
-            Release for commit ${{ github.sha }}
-            created by: ${{github.actor}}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload sdist to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/*.tar.gz
-          asset_name: engine-package-sdist-${{ github.sha }}.tar.gz
-          asset_content_type: application/octet-stream
-
-      - name: Upload wheel to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/*.whl
-          asset_name: engine-package-wheel-${{ github.sha }}.whl
-          asset_content_type: application/octet-stream
+          name: engine-package-wheel-${{ matrix.os }}-py${{ matrix.python-version }}-${{ github.sha }}
+          path: artefacts/build/${{ github.sha }}/
