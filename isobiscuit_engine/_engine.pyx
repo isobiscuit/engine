@@ -1,16 +1,13 @@
-import colorama
 import time
 import socket
 import zipfile
-import io
-import copy
 import threading
 import random
-from io import BytesIO
+import io
+from libc.string cimport strcmp
+from libc.stdio cimport printf
 
-
-colorama.init()
-hardware_memory_addresses = [
+cdef int* hardware_memory_addresses = [
     0xFFFF0000,
     0xFFFF0100,
     0xFFFF0101,
@@ -21,9 +18,10 @@ hardware_memory_addresses = [
     0xFFFF0106,
     0xFFFF0107,
 ]
+cdef int hardware_memory_addresses_len = 9
 
 
-engine_lock_fs = threading.Lock()
+cdef object engine_lock_fs = threading.Lock()
 """Engine class"""
 cdef class Engine:
     cdef int mode
@@ -34,22 +32,22 @@ cdef class Engine:
     cdef Hardware hardware
     cdef int pc
     cdef object zip
-    cdef object debug
+    cdef bint debug
     cdef dict register
     cdef dict memory
     cdef dict flags
-    cdef dict OPCODES
     cdef object stop_event
     cdef tuple code_memory
     """initializer"""
-    def __init__(self, dict data_sector, dict code_sector, dict mem_sector, zip: BytesIO, debug:bool=False, ):
+    def __init__(self, dict data_sector, dict code_sector, dict mem_sector, zip: io.BytesIO, bint debug=False, ):
         self.mode = 0x12
-        self.zip: BytesIO = zip
+        self.zip: io.BytesIO = zip
         self.stack = []
         self.hardware = Hardware(debug)
         self.debug = debug
         self.register = {i: 0 for i in range(0x10, 0x3C)}
-        self.memory = {**mem_sector,**data_sector, **code_sector}
+        self.memory = mem_sector
+        self.memory.update(data_sector)
 
 
         sorted_items = sorted(code_sector.items())
@@ -61,33 +59,29 @@ cdef class Engine:
         self.flags = {'ZF': 0, 'CF': 0, 'SF': 0, 'OF': 0}
         self.pc = 0
         self.ret_pcs = []
-        self.OPCODES = {
-            '1b': self.add, '1c': self.sub, '1d': self.mul, '1e': self.div,
-            '1f': self.mod, '20': self.pow, '2a': self.and_op, '2b': self.or_op,
-            '2c': self.xor, '2d': self.not_op, '2e': self.shl, '2f': self.shr,
-            '40': self.load, '41': self.store, '42': self.cmp, '43': self.jmp,
-            '44': self.je, '45': self.jne, '46': self.jg, '47': self.jl,
-            '48': self.mov, '49': self.interrupt, '4a': self.change_mode,
-            '4b': self.call, '4c': self.ret, '4d': self.push, '4e': self.pop,
-            '4f': self.swap, '50': self.dup, '51': self.drop, '52': self.halt,
-            '53': self.rand, '54': self.inc, '55': self.dec, '56': self.abs,
-            '57': self.neg,
-        }
         self.stop_event = threading.Event()
-        for i in hardware_memory_addresses:
-            self.memory[i] = None
+        for i in range(hardware_memory_addresses_len):
+            h_address = hardware_memory_addresses[i]
+            self.memory[h_address] = None
     """Kill engine"""
-    def kill(self):
+    cpdef kill(self):
         self.stop_event.set()
     """Run"""
     cpdef run(self):
+
+        cdef tuple op
         try:
-            while self.pc < self.code_len and not self.stop_event.is_set():
-                op = self.code_memory[self.pc]
-                if self.debug:
-                    print(f"[Execute] [Address:{hex(self.pc)}] {op}")
-                self.execute(op)
-                self.pc += 1
+            if self.debug:
+                while self.pc < self.code_len and not self.stop_event.is_set():
+                    op = self.code_memory[self.pc]
+                    printf("[Execute] [Address:"+hex(self.pc)+"] "+op)
+                    self.execute(op)
+                    self.pc += 1
+            else:
+                while self.pc < self.code_len and not self.stop_event.is_set():
+                    op = self.code_memory[self.pc]
+                    self.execute(op)
+                    self.pc += 1
         except KeyError as e:
             print(f"[ERROR] Key Error: {e}")
             raise e
@@ -96,12 +90,87 @@ cdef class Engine:
         except StopEngineInterrupt:
             return (self.zip)
         return (self.zip)
-    cdef void execute(self, op):
-        opcode: str = op[0]
-        if opcode in self.OPCODES:
-            self.OPCODES[opcode](op) 
+
+
+    cdef void execute(self, tuple op):
+        cdef str opcode = op[0]
+        cdef bytes opcode_bytes = opcode.encode('utf-8')
+        cdef char* opcode_cstr = <char*>opcode_bytes
+        if strcmp(opcode_cstr, b'1b') == 0:
+            self.add(op)
+        elif strcmp(opcode_cstr, b'1c') == 0:
+            self.sub(op)
+        elif strcmp(opcode_cstr, b'1d') == 0:
+            self.mul(op)
+        elif strcmp(opcode_cstr, b'1e') == 0:
+            self.div(op)
+        elif strcmp(opcode_cstr, b'1f') == 0:
+            self.mod(op)
+        elif strcmp(opcode_cstr, b'20') == 0:
+            self.pow(op)
+        elif strcmp(opcode_cstr, b'2a') == 0:
+            self.and_op(op)
+        elif strcmp(opcode_cstr, b'2b') == 0:
+            self.or_op(op)
+        elif strcmp(opcode_cstr, b'2c') == 0:
+            self.xor(op)
+        elif strcmp(opcode_cstr, b'2d') == 0:
+            self.not_op(op)
+        elif strcmp(opcode_cstr, b'2e') == 0:
+            self.shl(op)
+        elif strcmp(opcode_cstr, b'2f') == 0:
+            self.shr(op)
+        elif strcmp(opcode_cstr, b'40') == 0:
+            self.load(op)
+        elif strcmp(opcode_cstr, b'41') == 0:
+            self.store(op)
+        elif strcmp(opcode_cstr, b'42') == 0:
+            self.cmp(op)
+        elif strcmp(opcode_cstr, b'43') == 0:
+            self.jmp(op)
+        elif strcmp(opcode_cstr, b'44') == 0:
+            self.je(op)
+        elif strcmp(opcode_cstr, b'45') == 0:
+            self.jne(op)
+        elif strcmp(opcode_cstr, b'46') == 0:
+            self.jg(op)
+        elif strcmp(opcode_cstr, b'47') == 0:
+            self.jl(op)
+        elif strcmp(opcode_cstr, b'48') == 0:
+            self.mov(op)
+        elif strcmp(opcode_cstr, b'49') == 0:
+            self.interrupt(op)
+        elif strcmp(opcode_cstr, b'4a') == 0:
+            self.change_mode(op)
+        elif strcmp(opcode_cstr, b'4b') == 0:
+            self.call(op)
+        elif strcmp(opcode_cstr, b'4c') == 0:
+            self.ret(op)
+        elif strcmp(opcode_cstr, b'4d') == 0:
+            self.push(op)
+        elif strcmp(opcode_cstr, b'4e') == 0:
+            self.pop(op)
+        elif strcmp(opcode_cstr, b'4f') == 0:
+            self.swap(op)
+        elif strcmp(opcode_cstr, b'50') == 0:
+            self.dup(op)
+        elif strcmp(opcode_cstr, b'51') == 0:
+            self.drop(op)
+        elif strcmp(opcode_cstr, b'52') == 0:
+            self.halt(op)
+        elif strcmp(opcode_cstr, b'53') == 0:
+            self.rand(op)
+        elif strcmp(opcode_cstr, b'54') == 0:
+            self.inc(op)
+        elif strcmp(opcode_cstr, b'55') == 0:
+            self.dec(op)
+        elif strcmp(opcode_cstr, b'56') == 0:
+            self.abs(op)
+        elif strcmp(opcode_cstr, b'57') == 0:
+            self.neg(op)
         else:
-            raise ValueError(f"Unknown opcode: {opcode}")
+            printf("Unknown opcode: %s\n", opcode_cstr)
+
 
     cdef void add(self, tuple op): self.register[op[1]] += self.register[op[2]]
     cdef void sub(self, tuple op): self.register[op[1]] -= self.register[op[2]]
@@ -159,7 +228,7 @@ cdef class Engine:
     
     cdef void change_mode(self, tuple op):
         cdef int mode = op[1]
-        print("[INFO] mode changing is in developing")
+        printf("[INFO] mode changing is in developing\n")
         self.mode = mode
 
 
@@ -177,16 +246,23 @@ cdef class Engine:
 
 
     cdef void biscuit_call(self):
+        cdef bytes _debug_memory
+        cdef bytes _debug_stack
+        cdef bytes _debug_flags
+        cdef bytes _debug_pc
+        cdef bytes _debug_hardware_memory_address
         cdef int call = self.register[0x2f]
         if call == 0x00:
             arg1 = self.register[0x30]
             self.exit()
         elif call == 0x01:
             hardware_memory = {}
-            for i in hardware_memory_addresses:
+            for i in range(hardware_memory_addresses_len):
+                h_address = hardware_memory_addresses[h_address]
                 if self.debug:
-                    print(f"[UPDATE] Updating Hardware address: {i}")
-                hardware_memory[i] = self.memory[i]
+                    _debug_hardware_memory_address = bytes(str(h_address))
+                    printf("[UPDATE] Updating Hardware address: %s\n", _debug_hardware_memory_address)
+                hardware_memory[h_address] = self.memory[h_address]
             result = self.hardware.update(hardware_memory)
             self.memory.update(result)
         elif call == 0x02:
@@ -203,14 +279,17 @@ cdef class Engine:
             arg2 = self.register[0x31]
     
             if arg1 == 0x01:
-                print(arg2)
+                printf(arg2)
         elif call == 0x05:
-            print(f"Memory: {self.memory}")
-            print(f"Stack: {self.stack}")
-            print(f"Flags: {self.flags}")
-            print(f"Program Counter: {self.pc}")
-            print(f"Mode: {self.mode}")
-            print(f"Code Sector Index: {self.code_addresses}")
+            _debug_memory = bytes(str(self.memory))
+            _debug_stack = bytes(str(self.stack))
+            _debug_flags = bytes(str(self.flags))
+            _debug_pc = bytes(str(self.pc))
+            printf("Memory: %s\n", _debug_memory)
+            printf("Stack: %s\n", _debug_stack)
+            printf("Flags: %s\n", _debug_flags)
+            printf("Program Counter: %s\n", _debug_pc)
+            printf("Mode: %s\n", self.mode)
         elif call == 0x06:
             arg1 = self.register[0x30]
             arg2 = self.register[0x31]
@@ -225,6 +304,8 @@ cdef class Engine:
             engine.ret_pcs = self.ret_pcs
             engine.hardware = self.hardware
             engine.memory = self.memory
+            engine.code_memory = self.code_memory
+            engine.mode = self.mode
             threading.Thread(target=engine.run).start()
             self.flags['ZF'] = 0
             
@@ -236,7 +317,7 @@ cdef class Engine:
             
     cdef void syscall(self):
         #syscall = self.register[0x2f]
-        print("[INFO] Syscalls are in developing")
+        printf("[INFO] Syscalls are in developing\n")
 
 
 
@@ -245,16 +326,16 @@ cdef class Engine:
 
 
 
-    cdef void fs_read_file(self, file):
+    cdef void fs_read_file(self, str file):
         with engine_lock_fs:
             with zipfile.ZipFile(self.zip, "r", compression=zipfile.ZIP_DEFLATED) as zip:
-                self.register[0x2f] =  zip.read(file)
-    cdef void fs_write_file(self, file, text):
+                self.register[0x2f] = zip.read(file)
+    cdef void fs_write_file(self, str file, text):
         with engine_lock_fs:
             with zipfile.ZipFile(self.zip, "a", compression=zipfile.ZIP_DEFLATED) as zip:
                 zip.writestr(file, text)
             
-    cdef void fs_exists_file(self, file):
+    cdef void fs_exists_file(self, str file):
         with engine_lock_fs:
             with zipfile.ZipFile(self.zip, "r", compression=zipfile.ZIP_DEFLATED) as zip:
                 if file in zip.namelist():
@@ -269,7 +350,8 @@ cdef class Engine:
 
 
     cdef void exit(self):
-        raise StopEngineInterrupt
+        # Implement some saving features
+        self.kill()
 
 
 
@@ -379,7 +461,7 @@ cdef class Engine:
         r1 = op[1]
         r2 = op[2]
         val1 = self.register[r1]
-        val2 = self.register[r1]
+        val2 = self.register[r2]
         if isinstance(val1, str) or isinstance(val2, str):
             if val1 == val2:
                 self.flags['ZF'] = 1
@@ -440,30 +522,37 @@ cdef class Hardware:
         # Change color of terminal
         # Colors are hexadezimal
         # 0xFFFF0000 Color
-        color = self.hardware_memory[0xFFFF_0000]
+        cdef int color = self.hardware_memory[0xFFFF_0000]
 
-        colors = (
-            colorama.Fore.RESET,
-            colorama.Fore.WHITE,
-            colorama.Fore.BLACK,
-            colorama.Fore.YELLOW,
-            colorama.Fore.RED,
-            colorama.Fore.BLUE,
-            colorama.Fore.GREEN,
-            colorama.Fore.MAGENTA,
-            colorama.Fore.CYAN,
-            colorama.Fore.LIGHTYELLOW_EX,
-            colorama.Fore.LIGHTBLACK_EX,
-            colorama.Fore.LIGHTCYAN_EX,
-            colorama.Fore.LIGHTMAGENTA_EX,
-            colorama.Fore.LIGHTGREEN_EX,
-            colorama.Fore.LIGHTWHITE_EX,
-            colorama.Fore.LIGHTRED_EX
-        )
-        color = colors[color]
-        print(color, end="")
+        cdef const char* colors[16] 
+        colors = [
+            b'\033[0m',  # RESET
+            b'\033[97m', # WHITE
+            b'\033[30m', # BLACK
+            b'\033[93m', # YELLOW
+            b'\033[91m', # RED
+            b'\033[94m', # BLUE
+            b'\033[92m', # GREEN
+            b'\033[35m', # MAGENTA
+            b'\033[36m', # CYAN
+            b'\033[93m', # LIGHTYELLOW
+            b'\033[90m', # LIGHTBLACK
+            b'\033[96m', # LIGHTCYAN
+            b'\033[95m', # LIGHTMAGENTA
+            b'\033[92m', # LIGHTGREEN
+            b'\033[97m', # LIGHTWHITE
+            b'\033[91m'  # LIGHTRED
+        ]
+
+
+
+        cdef const char * _color = colors[color]
+        printf(_color)
     cdef void internet(self):
         cdef int action = self.hardware_memory[0xFFFF_0100]
+        cdef int port
+        cdef int kind
+        cdef int fam
         if action == None:
             return
         else:
@@ -477,7 +566,7 @@ cdef class Hardware:
                     fam = socket.AF_INET
                 else:
                     if self.debug:
-                        print(f"Invalid family of socket: {fam}")
+                        printf("Invalid family of socket: %s\n", fam)
                     return
                 if kind == 0x00: # UPD
                     kind = socket.SOCK_DGRAM
@@ -485,7 +574,7 @@ cdef class Hardware:
                     kind = socket.SOCK_STREAM
                 else:
                     if self.debug:
-                        print(f"Invalid kind of socket: {kind}")
+                        printf("Invalid kind of socket: %s\n", kind)
                     return
                 sock = socket.socket(fam, kind)
                 sock.bind((socket.gethostbyname(host), port))
@@ -499,7 +588,7 @@ cdef class Hardware:
                     fam = socket.AF_INET
                 else:
                     if self.debug:
-                        print(f"Invalid family of socket: {fam}")
+                        printf("Invalid family of socket: %s\n", fam)
                     return
                 if kind == 0x00: # UPD
                     kind = socket.SOCK_DGRAM
@@ -507,7 +596,7 @@ cdef class Hardware:
                     kind = socket.SOCK_STREAM
                 else:
                     if self.debug:
-                        print(f"Invalid kind of socket: {kind}")
+                        printf("Invalid kind of socket: %s\n", kind)
                     return
                 sock = socket.socket(fam, kind)
                 sock.connect((socket.gethostbyname(host), port))
