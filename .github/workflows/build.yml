@@ -31,7 +31,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: engine-package-sdist-py${{ matrix.python-version }}-${{ github.workflow_sha }}
-          path: artefacts/build/${{ github.workflow_sha }}/
+          path: dist/
 
   build-wheel:
     strategy:
@@ -61,4 +61,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: engine-package-wheel-${{ matrix.os }}-py${{ matrix.python-version }}-${{ github.workflow_sha }}
-          path: artefacts/build/${{ github.workflow_sha }}/
+          path: dist/
